@@ -82,6 +82,7 @@ void parse( TidyDoc doc , TidyNode node )
 void crawl( const char *url )
 {
     CURLcode ret;
+    static int i = 0;
     int err;
     char *goturl = ( char * )malloc( 255 * sizeof( char ) );
 
@@ -120,7 +121,7 @@ void crawl( const char *url )
 
                     while( fgets( goturl , 255 , reader ) != NULL )
                     {
-                        printf("URL got : %s\n" , goturl );
+                        printf("Link number: %d \t URL got : %s" , i++ , goturl );
 
                         crawl( goturl );
                     }
