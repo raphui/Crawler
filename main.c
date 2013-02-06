@@ -5,6 +5,7 @@
 #include <tidy/tidy.h>
 #include <tidy/buffio.h>
 
+FILE *reader = NULL;
 FILE *urlFile = NULL;
 
 CURL *handle = NULL;
@@ -22,6 +23,19 @@ uint write_cb(char *in, uint size, uint nmemb, TidyBuffer *out)
     tidyBufAppend( out , in , r );
 
     return r;
+}
+
+void openFile( void )
+{
+    urlFile = fopen("/tmp/urlFile.txt" , "w+");
+    reader = fopen("/tmp/urlFile.txt" , "r");
+
+    if( urlFile == NULL || reader == NULL )
+    {
+        printf("Cannot open file parse().\n");
+
+        exit( 1 );
+    }
 }
 
 void parse( TidyDoc doc , TidyNode node )
@@ -51,7 +65,7 @@ void parse( TidyDoc doc , TidyNode node )
                             {
                                 fprintf( urlFile , "%s\n" , tidyAttrValue( attr ) );
 
-                                printf("%s\n" , tidyAttrValue( attr ) );
+                                //printf("%s\n" , tidyAttrValue( attr ) );
                             }
                         }
 
@@ -67,7 +81,6 @@ void parse( TidyDoc doc , TidyNode node )
 
 void crawl( const char *url )
 {
-    FILE *reader = NULL;
     CURLcode ret;
     int err;
     char *goturl = ( char * )malloc( 255 * sizeof( char ) );
@@ -100,15 +113,8 @@ void crawl( const char *url )
 
                 if( err >= 0 )
                 {
-                    urlFile = fopen("/tmp/urlFile.txt" , "w+");
-                    reader = fopen("/tmp/urlFile.txt" , "r");
-
-                    if( urlFile == NULL || reader == NULL )
-                    {
-                        printf("Cannot open file parse().\n");
-
-                        exit( 1 );
-                    }
+                    if( urlFile == NULL && reader == NULL )
+                        openFile();
 
                     parse( tdoc , tidyGetRoot( tdoc ) );
 
@@ -140,7 +146,7 @@ int main( void )
 
     handle = curl_easy_init();
 
-    crawl("http://stackoverflow.com/");
+    crawl("http://www.racerxonline.com/");
 
     curl_easy_cleanup( handle );
 
