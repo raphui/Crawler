@@ -121,7 +121,7 @@ void crawl( const char *url )
 
                     while( fgets( goturl , 255 , reader ) != NULL )
                     {
-                        printf("Link number: %d \t URL got : %s" , i++ , goturl );
+                        printf("Link number: %d     URL got : %s" , i++ , goturl );
 
                         crawl( goturl );
                     }
