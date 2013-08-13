@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <curl/curl.h>
 #include <tidy/tidy.h>
 #include <tidy/buffio.h>
@@ -16,7 +17,6 @@ typedef struct node
 
 }node;
 
-
 node *tree;
 node *current;
 
@@ -26,9 +26,16 @@ typedef struct record
 {
 	node *n;
 	int depth;
+	int countBlocked;
+	time_t lastTimeBlocked;
 }record;
 
+
 record history[HISTORY_SIZE];
+
+pthread_t thread;
+pthread_mutex_t mutexHistory;
+
 
 struct node *createTree( void )
 {
@@ -81,13 +88,61 @@ struct node *addChilds( node **n , node *item )
 void addNodeInHistory( node *t )
 {
 	static int i = 0;
+	int position = 0;
 	record *tmp;
 
-	tmp = &history[i];
-	tmp->n = t;
-	tmp->depth = current_depth;
-	i++;
+	position = findFreePositionInHistory();
 
+	pthread_mutex_lock( &mutexHistory );	
+
+	if( position >= 0 )
+	{
+		tmp = &history[position];
+		tmp->n = t;
+		tmp->depth = current_depth;
+		tmp->countBlocked = 0;
+		time( &( tmp->lastTimeBlocked ) ); 
+		i++;
+
+	}
+	else
+	{
+		tmp = &history[i];
+		tmp->n = t;
+		tmp->depth = current_depth;
+		tmp->countBlocked = 0;
+		time( &( tmp->lastTimeBlocked ) ); 
+		i++;
+	}
+	
+	pthread_mutex_unlock( &mutexHistory );	
+}
+
+void deleteNodeInHistory( int position )
+{
+	record *tmp;
+
+	tmp = &history[position];
+	tmp->n = NULL;
+	tmp->depth = 0;
+	tmp->countBlocked = 0;
+	tmp->lastTimeBlocked = 0;
+}
+
+int findFreePositionInHistory( void )
+{
+	int i = 0;
+	record *tmp;
+	
+	for( i = 0 ; i < HISTORY_SIZE ; i++ )
+	{
+		tmp = &history[i];
+	
+		if( tmp->n == NULL )
+			return i;
+	}
+
+	return -1;
 }
 
 int isNodeInHistory( node *t )
@@ -105,6 +160,8 @@ int isNodeInHistory( node *t )
 	
 		if( !strcmp( t->url , tmp->n->url ) && ( current_depth >= tmp->depth ) )
 		{
+			tmp->countBlocked++;
+			time( &( tmp->lastTimeBlocked ) ); 
 			return 1; 
 		}
 	}
@@ -112,6 +169,44 @@ int isNodeInHistory( node *t )
 	return 0;
 }
 
+void deleteEntryHistory( void )
+{
+	int i = 0;
+	record *tmp;
+	time_t start_rawtime;
+	time_t now_rawtime;
+	time( &start_rawtime );
+	int flag = 0;
+
+	while( 1 )
+	{
+		time( &now_rawtime );
+	
+		if( ( start_rawtime + 10 ) == now_rawtime )
+		{
+			start_rawtime = 0;
+			flag = 1;
+			printf("Timeout, start deleteEntryHistory\n");
+		}
+		
+		if( flag == 1 )
+		{
+			for( i = 0 ; i < HISTORY_SIZE ; i++ )
+			{
+				tmp = &history[i];
+		
+				if( ( tmp->countBlocked < 3 ) && ( ( now_rawtime - tmp->lastTimeBlocked ) > 10 ) )
+				{
+					pthread_mutex_lock( &mutexHistory );	
+					deleteNodeInHistory( i );
+					pthread_mutex_unlock( &mutexHistory );	
+				}
+			}
+		}
+
+	}
+
+}
 
 CURL *handle = NULL;
 
@@ -298,6 +393,9 @@ int main( void )
 
     //crawl("http://www.racerxonline.com/");
 	//crawl("http://www.lefigaro.fr");
+	
+	pthread_create( &thread , NULL , ( void * )deleteEntryHistory , NULL );
+
 	crawl( tree );
 
     curl_easy_cleanup( handle );

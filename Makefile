@@ -1,6 +1,6 @@
 CC := gcc
 LD := ld
-LIBS := -lcurl -ltidy
+LIBS := -lcurl -ltidy -lpthread
 DEBUGFLAGS_C-Compiler := -g -O0 -fno-omit-frame-pointer -pipe -Wall
 SRC := main.c
 OBJ := $(SRC:.c=.o)
