@@ -1,10 +1,6 @@
-# IDE generated files #
-#######################
-Bridge/*.pro.user*
-Bridge/*.pro.user
-*.pro.user*
+*.old
+crawler
+.*
+*.o
 *.pro.user
-
-# Build directory #
-###################
-wMusic-build-*
+*.pro
