@@ -272,12 +272,16 @@ void parse( TidyDoc doc , TidyNode n )
     }
 }
 
+char curl_errbuff[1024];
+
 void crawl( node *n )
 {
     CURLcode ret;
     static int i = 0;
 	//static int depth = 0;
     int err;
+	char *pt;
+	char tmp_url[255];
 	node *tmp;
 
 	current = n;
@@ -285,14 +289,24 @@ void crawl( node *n )
 
 	printf("Link number: %d     URL got : %s\n" , i++ , n->url );
 
-    curl_easy_setopt( handle , CURLOPT_URL , n->url );
+	/* Avoid things like "%20http://", etc... by getting a pointer to "http" */
+	pt = strstr( n->url , "http");
+
+	if( pt != NULL )
+	{
+		strcpy( tmp_url , pt );
+	}
+
+    curl_easy_setopt( handle , CURLOPT_URL , tmp_url );//n->url );
     curl_easy_setopt( handle , CURLOPT_WRITEFUNCTION , write_cb );
     curl_easy_setopt( handle , CURLOPT_WRITEDATA , &docbuff );
+    curl_easy_setopt( handle , CURLOPT_ERRORBUFFER , &curl_errbuff );
 
     ret = curl_easy_perform( handle );
 
     if( ret != 0 )
     {
+		printf("curl_easy_perform return: %d, errbuff: %s\n" , ret  , curl_errbuff );
         curl_easy_cleanup( handle );
 
         return;
