@@ -7,11 +7,12 @@
 #include <tidy/buffio.h>
 
 #define HISTORY_SIZE	1024
+#define URL_SIZE		1024
 
 typedef struct node
 {
 	unsigned char passed;
-	char url[255];
+	char url[URL_SIZE];
 	struct node *childs;
 	struct node *siblings;
 
@@ -93,6 +94,12 @@ void addNodeInHistory( node *t )
 
 	position = findFreePositionInHistory();
 
+	if( position < 0 )
+	{
+		printf("History is full\n");
+		exit( 1 );
+	}
+
 	pthread_mutex_lock( &mutexHistory );	
 
 	if( position >= 0 )
@@ -123,6 +130,7 @@ void deleteNodeInHistory( int position )
 	record *tmp;
 
 	tmp = &history[position];
+	free( tmp->n );
 	tmp->n = NULL;
 	tmp->depth = 0;
 	tmp->countBlocked = 0;
@@ -230,7 +238,7 @@ void parse( TidyDoc doc , TidyNode n )
 {
     TidyNode child;
 
-	node *item;
+	node *item = NULL;
 
     char str[] = "a";
 
@@ -257,6 +265,7 @@ void parse( TidyDoc doc , TidyNode n )
 								item->passed = 0;
 								sprintf( item->url , "%s" , tidyAttrValue( attr ) );
 
+	
 								addChilds( &current , item );
 								free( item );
                             }
@@ -281,7 +290,7 @@ void crawl( node *n )
 	//static int depth = 0;
     int err;
 	char *pt;
-	char tmp_url[255];
+	char tmp_url[URL_SIZE];
 	node *tmp;
 
 	current = n;
@@ -336,7 +345,7 @@ void crawl( node *n )
 							
 							tmp = n->siblings;
 
-							if( ( tmp->siblings == NULL ) || ( tmp == NULL ) )
+							if( ( tmp == NULL ) || ( tmp->siblings == NULL ) )
 								exit( 1 );
 							
 							
@@ -357,7 +366,7 @@ void crawl( node *n )
 
 								tmp = n->childs->siblings;
 								
-								if( ( tmp->siblings == NULL ) || ( tmp == NULL ) )
+								if( ( tmp == NULL ) || ( tmp->siblings == NULL ) )
 									exit( 1 );
 
 								while( isNodeInHistory( tmp ) == 1 )
